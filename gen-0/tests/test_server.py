@@ -1,19 +1,24 @@
-"""Phase 0 validation: gen-0 server responds correctly on /health."""
+"""Phase 0 validation: gen-0 server /health responds correctly (in-process test)."""
 import pytest
-import aiohttp
-import asyncio
+from aiohttp.test_utils import TestClient, TestServer
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from src.server import make_app
 
 
-@pytest.mark.asyncio
-async def test_health_returns_200():
-    async with aiohttp.ClientSession() as session:
-        async with session.get("http://localhost:8401/health") as resp:
-            assert resp.status == 200
+@pytest.fixture
+async def client(aiohttp_client):  # type: ignore[no-untyped-def]
+    return await aiohttp_client(make_app())
 
 
-@pytest.mark.asyncio
-async def test_health_returns_ok():
-    async with aiohttp.ClientSession() as session:
-        async with session.get("http://localhost:8401/health") as resp:
-            body = await resp.json()
-            assert body.get("ok") is True
+async def test_health_returns_200(client) -> None:  # type: ignore[no-untyped-def]
+    resp = await client.get("/health")
+    assert resp.status == 200
+
+
+async def test_health_returns_ok(client) -> None:  # type: ignore[no-untyped-def]
+    resp = await client.get("/health")
+    body = await resp.json()
+    assert body.get("ok") is True
