@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import shutil
 import time
@@ -24,6 +23,7 @@ MAX_GENS = int(os.environ.get("CAMBRIAN_MAX_GENS", "5"))
 MAX_RETRIES = int(os.environ.get("CAMBRIAN_MAX_RETRIES", "3"))
 SPEC_PATH = os.environ.get("CAMBRIAN_SPEC_PATH", "./spec/CAMBRIAN-SPEC-005.md")
 WORKSPACE = os.environ.get("CAMBRIAN_WORKSPACE", "/workspace")
+TOKEN_BUDGET = int(os.environ.get("CAMBRIAN_TOKEN_BUDGET", "0"))  # 0 = unlimited
 
 structlog.configure(
     processors=[
@@ -85,8 +85,11 @@ async def generation_loop() -> None:
     last_failure: dict[str, Any] | None = None
     last_failed_files: dict[str, str] = {}
     generations_produced = 0
+    cumulative_tokens = 0
 
     while generations_produced < MAX_GENS:
+        _status = "idle"
+
         # 1. Determine generation number
         records = await supervisor.get_versions()
         if records:
@@ -132,6 +135,12 @@ async def generation_loop() -> None:
                 log.error("max_retries_exhausted", retries=MAX_RETRIES)
                 break
             continue
+
+        # Track token budget
+        cumulative_tokens += input_tokens + output_tokens
+        if TOKEN_BUDGET > 0 and cumulative_tokens > TOKEN_BUDGET:
+            log.error("token_budget_exhausted", budget=TOKEN_BUDGET, used=cumulative_tokens)
+            break
 
         # 4. Parse response
         files = generate.parse_files(response_text)
@@ -188,20 +197,29 @@ async def generation_loop() -> None:
                 break
             continue
 
-        # 9. Poll until terminal
+        # 9. Poll until test rig completes
         record = await supervisor.poll_until_terminal(gen_num)
-        outcome = record.get("outcome")
         viability = record.get("viability") or {}
-        log.info("verification_complete", generation=gen_num, outcome=outcome)
+        viable = viability.get("status") == "viable"
+        log.info("verification_complete", generation=gen_num, viable=viable)
 
-        # 10. Decide
-        if outcome == "promoted":
-            log.info("generation_promoted", generation=gen_num)
-            retry_count = 0
-            last_failure = None
-            last_failed_files = {}
-            generations_produced += 1
+        # 10. Decide — Prime owns the promote/rollback decision
+        if viable:
+            promote_result = await supervisor.promote(gen_num)
+            if promote_result.get("ok"):
+                log.info("generation_promoted", generation=gen_num)
+                retry_count = 0
+                last_failure = None
+                last_failed_files = {}
+                generations_produced += 1
+            else:
+                log.error("promote_failed", generation=gen_num, error=promote_result.get("error"))
+                break
         else:
+            rollback_result = await supervisor.rollback(gen_num)
+            if not rollback_result.get("ok"):
+                log.warning("rollback_failed", generation=gen_num, error=rollback_result.get("error"))
+
             # Collect failure context for informed retry
             last_failure = viability.get("diagnostics", {})
             last_failed_files = _read_failed_files(artifact_dir, file_list)
@@ -217,7 +235,8 @@ async def generation_loop() -> None:
                 break
 
     _status = "idle"
-    log.info("generation_loop_done", generations_produced=generations_produced)
+    log.info("generation_loop_done", generations_produced=generations_produced,
+             cumulative_tokens=cumulative_tokens)
 
 
 def _read_failed_files(artifact_dir: Path, file_list: list[str]) -> dict[str, str]:

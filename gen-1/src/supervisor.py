@@ -12,9 +12,27 @@ log = structlog.get_logger(component="prime")
 
 SUPERVISOR_URL = os.environ.get("CAMBRIAN_SUPERVISOR_URL", "http://localhost:8400")
 
+_session: aiohttp.ClientSession | None = None
+
 
 class SupervisorError(Exception):
     pass
+
+
+def _get_session() -> aiohttp.ClientSession:
+    """Get or create a shared ClientSession."""
+    global _session
+    if _session is None or _session.closed:
+        _session = aiohttp.ClientSession()
+    return _session
+
+
+async def close() -> None:
+    """Close the shared session. Call on shutdown."""
+    global _session
+    if _session and not _session.closed:
+        await _session.close()
+        _session = None
 
 
 async def _request(
@@ -27,13 +45,13 @@ async def _request(
 
     while True:
         try:
-            async with aiohttp.ClientSession() as session:
-                if method == "GET":
-                    async with session.get(url) as resp:
-                        return await resp.json()
-                else:
-                    async with session.post(url, json=json_body) as resp:
-                        return await resp.json()
+            session = _get_session()
+            if method == "GET":
+                async with session.get(url) as resp:
+                    return await resp.json()
+            else:
+                async with session.post(url, json=json_body) as resp:
+                    return await resp.json()
         except (aiohttp.ClientError, OSError) as e:
             log.warning(
                 "supervisor_unreachable",
@@ -74,11 +92,10 @@ async def rollback(generation: int) -> dict[str, Any]:
 
 
 async def poll_until_terminal(generation: int, interval: float = 2.0) -> dict[str, Any]:
-    """Poll GET /versions until the generation record has a terminal outcome."""
-    terminal = {"promoted", "failed", "timeout"}
+    """Poll GET /versions until the generation record's outcome is no longer in_progress."""
     while True:
         records = await get_versions()
         for record in records:
-            if record.get("generation") == generation and record.get("outcome") in terminal:
+            if record.get("generation") == generation and record.get("outcome") != "in_progress":
                 return record
         await asyncio.sleep(interval)

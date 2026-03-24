@@ -45,6 +45,17 @@ class TestParseFiles:
         assert "def main():" in files["main.py"]
         assert "if __name__" in files["main.py"]
 
+    def test_normalizes_crlf_to_lf(self):
+        response = '<file path="x.py">line1\r\nline2\r\nline3</file>'
+        files = parse_files(response)
+        assert files["x.py"] == "line1\nline2\nline3"
+        assert "\r" not in files["x.py"]
+
+    def test_handles_mixed_line_endings(self):
+        response = '<file path="x.py">line1\r\nline2\nline3\r\n</file>'
+        files = parse_files(response)
+        assert files["x.py"] == "line1\nline2\nline3"
+
 
 class TestBuildFreshPrompt:
     def test_includes_spec(self):

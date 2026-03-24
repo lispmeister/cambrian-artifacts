@@ -14,13 +14,18 @@ def compute_spec_hash(spec_path: Path) -> str:
 
 
 def compute_artifact_hash(artifact_dir: Path, files: list[str]) -> str:
-    """SHA-256 hash of all artifact files except manifest.json, sorted by path."""
+    """SHA-256 hash of all artifact files except manifest.json, sorted by path.
+
+    Includes both file paths and file contents in the hash so that renames
+    are detected even when content is unchanged.
+    """
     hasher = hashlib.sha256()
     for f in sorted(files):
         if f == "manifest.json":
             continue
         file_path = artifact_dir / f
         if file_path.exists():
+            hasher.update(f.encode())
             hasher.update(file_path.read_bytes())
     return "sha256:" + hasher.hexdigest()
 
@@ -62,6 +67,13 @@ def build_manifest(
                 "method": "GET",
                 "path": "/health",
                 "expect": {"status": 200, "body": {"ok": True}},
+            },
+            {
+                "name": "stats-generation",
+                "type": "http",
+                "method": "GET",
+                "path": "/stats",
+                "expect": {"status": 200, "body_contains": {"generation": generation}},
             },
             {
                 "name": "stats-schema",

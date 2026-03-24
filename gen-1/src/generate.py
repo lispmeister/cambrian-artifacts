@@ -123,7 +123,14 @@ async def call_llm(system: str, user: str, model: str) -> tuple[str, int, int]:
         messages=[{"role": "user", "content": user}],
     )
 
-    text = message.content[0].text
+    # Validate response has text content
+    if not message.content:
+        raise RuntimeError("LLM returned empty content")
+    text_blocks = [b for b in message.content if b.type == "text"]
+    if not text_blocks:
+        raise RuntimeError(f"LLM returned no text blocks, got types: {[b.type for b in message.content]}")
+
+    text = text_blocks[0].text
     input_tokens = message.usage.input_tokens
     output_tokens = message.usage.output_tokens
     log.info("llm_call_complete", input_tokens=input_tokens, output_tokens=output_tokens)
@@ -141,9 +148,9 @@ def parse_files(response: str) -> dict[str, str]:
     """Extract files from <file path="...">content</file> blocks.
 
     Returns a dict mapping file paths to their contents.
-    Strips leading/trailing newlines from each file's content.
+    Strips leading/trailing newlines and normalizes line endings to LF.
     """
     matches = FILE_PATTERN.findall(response)
     if not matches:
         return {}
-    return {path: content.strip("\n") for path, content in matches}
+    return {path: content.replace("\r\n", "\n").strip("\n") for path, content in matches}

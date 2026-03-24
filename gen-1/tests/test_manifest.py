@@ -45,6 +45,13 @@ class TestComputeArtifactHash:
         h2 = compute_artifact_hash(tmp_artifact, files)
         assert h1 != h2
 
+    def test_includes_file_paths_in_hash(self, tmp_artifact):
+        """Renaming a file changes the hash even if content is identical."""
+        (tmp_artifact / "src" / "other.py").write_text("print('hello')")
+        h1 = compute_artifact_hash(tmp_artifact, ["src/main.py"])
+        h2 = compute_artifact_hash(tmp_artifact, ["src/other.py"])
+        assert h1 != h2, "Hash should differ when file path differs, even with same content"
+
 
 class TestBuildManifest:
     def test_has_all_required_fields(self, tmp_artifact):
@@ -85,3 +92,33 @@ class TestBuildManifest:
         )
         # ISO-8601: contains 'T' separator
         assert "T" in m["created_at"]
+
+    def test_has_three_contracts(self, tmp_artifact):
+        m = build_manifest(
+            generation=1,
+            parent_generation=0,
+            spec_hash="sha256:abc",
+            artifact_dir=tmp_artifact,
+            files=["src/main.py"],
+            producer_model="test",
+            input_tokens=0,
+            output_tokens=0,
+        )
+        contracts = m["contracts"]
+        assert len(contracts) == 3
+        names = {c["name"] for c in contracts}
+        assert names == {"health-liveness", "stats-generation", "stats-schema"}
+
+    def test_stats_generation_contract_has_generation(self, tmp_artifact):
+        m = build_manifest(
+            generation=5,
+            parent_generation=4,
+            spec_hash="sha256:abc",
+            artifact_dir=tmp_artifact,
+            files=["src/main.py"],
+            producer_model="test",
+            input_tokens=0,
+            output_tokens=0,
+        )
+        gen_contract = [c for c in m["contracts"] if c["name"] == "stats-generation"][0]
+        assert gen_contract["expect"]["body_contains"]["generation"] == 5
