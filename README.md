@@ -1,5 +1,7 @@
 # cambrian-artifacts
 
+![Burgess Shale trilobite fossil](docs/images/BurgessShale_CROP.jpg)
+
 Generated artifacts for the [Cambrian](https://github.com/lispmeister/cambrian) self-reproducing code factory.
 
 Each directory is a generation:
