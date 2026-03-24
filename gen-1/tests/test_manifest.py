@@ -69,7 +69,7 @@ class TestBuildManifest:
         assert "manifest.json" in m["files"]
         assert m["entry"]["build"] == "pip install -r requirements.txt"
         assert m["entry"]["test"] == "python -m pytest tests/ -v"
-        assert m["entry"]["start"] == "python src/prime.py"
+        assert m["entry"]["start"] == "python -m src.prime"
         assert m["entry"]["health"] == "http://localhost:8401/health"
 
     def test_created_at_is_iso(self, tmp_artifact):
