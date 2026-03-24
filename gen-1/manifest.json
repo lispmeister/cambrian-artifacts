@@ -1,0 +1,61 @@
+{
+  "cambrian-version": 1,
+  "generation": 1,
+  "parent-generation": 0,
+  "spec-hash": "sha256:b468da4e3d9c522beb2ac431ee9b3d0447c76bd43e24eb3105a86579a8c2f1d2",
+  "artifact-hash": "sha256:64bbe86ce7036b4283f2d959da573f13e3e2863b2c412c77dbbdcf4d8295144e",
+  "producer-model": "human+claude-code",
+  "token-usage": {
+    "input": 0,
+    "output": 0
+  },
+  "files": [
+    "manifest.json",
+    "pytest.ini",
+    "requirements.txt",
+    "spec/CAMBRIAN-SPEC-005.md",
+    "src/generate.py",
+    "src/manifest.py",
+    "src/models.py",
+    "src/prime.py",
+    "src/supervisor.py",
+    "tests/test_generate.py",
+    "tests/test_manifest.py",
+    "tests/test_prime.py"
+  ],
+  "created_at": "2026-03-24T11:33:37.118632+00:00",
+  "entry": {
+    "build": "pip install -r requirements.txt",
+    "test": "python -m pytest tests/ -v",
+    "start": "python src/prime.py",
+    "health": "http://localhost:8401/health"
+  },
+  "contracts": [
+    {
+      "name": "health-liveness",
+      "type": "http",
+      "method": "GET",
+      "path": "/health",
+      "expect": {
+        "status": 200,
+        "body": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "stats-schema",
+      "type": "http",
+      "method": "GET",
+      "path": "/stats",
+      "expect": {
+        "status": 200,
+        "body_has_keys": [
+          "generation",
+          "status",
+          "uptime"
+        ]
+      }
+    }
+  ]
+}
