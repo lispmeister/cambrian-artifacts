@@ -1,0 +1,17 @@
+{
+  "cambrian-version": 1,
+  "generation": 0,
+  "parent-generation": 0,
+  "spec-hash": "sha256:f62b3c5a9f6a024fc83ed7c794b6e389a3e890a551dd47d29c432ad2ad1c4a4c",
+  "artifact-hash": "sha256:28a5c0181be77e279270f16262467aa341333f495b2eecefe0515b617a7da098",
+  "producer-model": "human",
+  "token-usage": {"input": 0, "output": 0},
+  "files": ["manifest.json", "server.py", "test_server.py", "requirements.txt", "pytest.ini"],
+  "created_at": "2026-03-26T00:00:00Z",
+  "entry": {
+    "build": "pip install -r requirements.txt",
+    "test": "pytest test_server.py -v",
+    "start": "python server.py",
+    "health": "http://localhost:8401/health"
+  }
+}
