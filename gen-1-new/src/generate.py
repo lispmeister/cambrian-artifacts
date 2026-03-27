@@ -112,16 +112,21 @@ Parent generation: {parent}
 # ---------------------------------------------------------------------------
 
 async def call_llm(system: str, user: str, model: str) -> tuple[str, int, int]:
-    """Call the Anthropic API. Returns (response_text, input_tokens, output_tokens)."""
+    """Call the Anthropic API. Returns (response_text, input_tokens, output_tokens).
+
+    Streaming MUST be used — the Anthropic SDK rejects non-streaming requests
+    with max_tokens above the threshold for long-running operations.
+    """
     client = anthropic.AsyncAnthropic()
     log.info("llm_call_start", model=model)
 
-    message = await client.messages.create(
+    async with client.messages.stream(
         model=model,
         max_tokens=32768,
         system=system,
         messages=[{"role": "user", "content": user}],
-    )
+    ) as stream:
+        message = await stream.get_final_message()
 
     if not message.content:
         raise RuntimeError("LLM returned empty content")

@@ -3,7 +3,7 @@
   "generation": 1,
   "parent-generation": 0,
   "spec-hash": "sha256:54b470f7e5d3e5396501b2faa7a1619004daeea4440208c12850736af0f8e978",
-  "artifact-hash": "sha256:3e2b7077b4c9222859dd69842532aab54643dd0bc725a07404dc8d40a342b31f",
+  "artifact-hash": "sha256:31a353ad489e6bcfeff9a986e0e9e065bfce9f2f5e1e64b163f1029648553a49",
   "producer-model": "human+claude-sonnet-4-6",
   "token-usage": {"input": 0, "output": 0},
   "files": [
