@@ -18,9 +18,11 @@ from . import generate, manifest, supervisor
 # ---------------------------------------------------------------------------
 
 GENERATION = int(os.environ.get("CAMBRIAN_GENERATION", "0"))
-MODEL = os.environ.get("CAMBRIAN_MODEL", "claude-opus-4-6")
+MODEL = os.environ.get("CAMBRIAN_MODEL", "claude-sonnet-4-6")
+ESCALATION_MODEL = os.environ.get("CAMBRIAN_ESCALATION_MODEL", "claude-opus-4-6")
 MAX_GENS = int(os.environ.get("CAMBRIAN_MAX_GENS", "5"))
 MAX_RETRIES = int(os.environ.get("CAMBRIAN_MAX_RETRIES", "3"))
+MAX_PARSE_RETRIES = int(os.environ.get("CAMBRIAN_MAX_PARSE_RETRIES", "2"))
 SPEC_PATH = os.environ.get("CAMBRIAN_SPEC_PATH", "./spec/CAMBRIAN-SPEC-005.md")
 WORKSPACE = os.environ.get("CAMBRIAN_WORKSPACE", "/workspace")
 TOKEN_BUDGET = int(os.environ.get("CAMBRIAN_TOKEN_BUDGET", "0"))  # 0 = unlimited
@@ -66,6 +68,51 @@ def make_app() -> web.Application:
 
 
 # ---------------------------------------------------------------------------
+# Parse repair helper
+# ---------------------------------------------------------------------------
+
+async def _parse_with_repair(
+    response: str, model: str
+) -> tuple[dict[str, str] | None, int]:
+    """Attempt parse_files; on ParseError retry with a repair prompt up to MAX_PARSE_RETRIES.
+
+    Returns (files, extra_tokens). extra_tokens counts tokens used by repair calls.
+    A successful parse after repair does NOT consume a generation retry.
+    """
+    extra_tokens = 0
+    current = response
+    for attempt in range(MAX_PARSE_RETRIES + 1):
+        try:
+            return generate.parse_files(current), extra_tokens
+        except generate.ParseError as e:
+            if attempt >= MAX_PARSE_RETRIES:
+                log.error(
+                    "parse_retries_exhausted",
+                    error=str(e),
+                    max_parse_retries=MAX_PARSE_RETRIES,
+                )
+                return None, extra_tokens
+            log.warning(
+                "parse_error_attempting_repair",
+                error=str(e),
+                attempt=attempt + 1,
+                max_parse_retries=MAX_PARSE_RETRIES,
+            )
+            repair_prompt = generate.build_parse_repair_prompt(str(e), current)
+            try:
+                current, r_in, r_out = await generate.call_llm(
+                    system=generate.SYSTEM_PROMPT,
+                    user=repair_prompt,
+                    model=model,
+                )
+                extra_tokens += r_in + r_out
+            except Exception as repair_err:
+                log.error("parse_repair_llm_failed", error=str(repair_err))
+                return None, extra_tokens
+    return None, extra_tokens
+
+
+# ---------------------------------------------------------------------------
 # Generation loop
 # ---------------------------------------------------------------------------
 
@@ -99,7 +146,16 @@ async def generation_loop() -> None:
             gen_num = 1
 
         parent = GENERATION
-        log.info("generation_start", generation=gen_num, parent=parent, retry=retry_count)
+
+        # Model escalation: Sonnet on first attempt, Opus on retries
+        current_model = MODEL if retry_count == 0 else ESCALATION_MODEL
+        log.info(
+            "generation_start",
+            generation=gen_num,
+            parent=parent,
+            retry=retry_count,
+            model=current_model,
+        )
 
         # 2. Build prompt
         _status = "generating"
@@ -126,7 +182,7 @@ async def generation_loop() -> None:
             response_text, input_tokens, output_tokens = await generate.call_llm(
                 system=generate.SYSTEM_PROMPT,
                 user=user_prompt,
-                model=MODEL,
+                model=current_model,
             )
         except Exception as e:
             log.error("llm_call_failed", error=str(e))
@@ -142,9 +198,10 @@ async def generation_loop() -> None:
             log.error("token_budget_exhausted", budget=TOKEN_BUDGET, used=cumulative_tokens)
             break
 
-        # 4. Parse response
-        files = generate.parse_files(response_text)
-        if not files:
+        # 4. Parse response (with repair loop)
+        files, repair_tokens = await _parse_with_repair(response_text, current_model)
+        cumulative_tokens += repair_tokens
+        if files is None:
             log.error("no_files_parsed", response_length=len(response_text))
             retry_count += 1
             if retry_count > MAX_RETRIES:
@@ -176,9 +233,10 @@ async def generation_loop() -> None:
             spec_hash=spec_hash,
             artifact_dir=artifact_dir,
             files=file_list,
-            producer_model=MODEL,
+            producer_model=current_model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            spec_content=spec_content,
         )
         manifest.write_manifest(artifact_dir, manifest_data)
         log.info("artifact_written", generation=gen_num, files=len(file_list))

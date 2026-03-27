@@ -1,18 +1,24 @@
 """Tests for LLM prompt construction and response parsing."""
 import pytest
-from src.generate import parse_files, build_fresh_prompt, build_retry_prompt
+from src.generate import (
+    ParseError,
+    parse_files,
+    build_fresh_prompt,
+    build_retry_prompt,
+    build_parse_repair_prompt,
+)
 
 
 class TestParseFiles:
     def test_single_file(self):
-        response = '<file path="src/main.py">print("hello")</file>'
+        response = '<file path="src/main.py">print("hello")\n</file:end>'
         files = parse_files(response)
         assert files == {"src/main.py": 'print("hello")'}
 
     def test_multiple_files(self):
         response = (
-            '<file path="src/a.py">a = 1</file>\n'
-            '<file path="src/b.py">b = 2</file>'
+            '<file path="src/a.py">a = 1\n</file:end>\n'
+            '<file path="src/b.py">b = 2\n</file:end>'
         )
         files = parse_files(response)
         assert len(files) == 2
@@ -20,14 +26,14 @@ class TestParseFiles:
         assert files["src/b.py"] == "b = 2"
 
     def test_strips_surrounding_newlines(self):
-        response = '<file path="x.py">\nline1\nline2\n</file>'
+        response = '<file path="x.py">\nline1\nline2\n</file:end>'
         files = parse_files(response)
         assert files["x.py"] == "line1\nline2"
 
     def test_ignores_text_outside_blocks(self):
         response = (
             "Here is the code:\n\n"
-            '<file path="x.py">code</file>\n\n'
+            '<file path="x.py">code\n</file:end>\n\n'
             "That's all."
         )
         files = parse_files(response)
@@ -36,25 +42,58 @@ class TestParseFiles:
     def test_empty_response(self):
         assert parse_files("") == {}
 
-    def test_malformed_response(self):
+    def test_no_file_blocks(self):
         assert parse_files("no file blocks here") == {}
 
     def test_multiline_content(self):
-        response = '<file path="main.py">def main():\n    pass\n\nif __name__ == "__main__":\n    main()</file>'
+        response = (
+            '<file path="main.py">\n'
+            'def main():\n    pass\n\nif __name__ == "__main__":\n    main()\n'
+            '</file:end>'
+        )
         files = parse_files(response)
         assert "def main():" in files["main.py"]
-        assert "if __name__" in files["main.py"]
+        assert 'if __name__ == "__main__"' in files["main.py"]
 
     def test_normalizes_crlf_to_lf(self):
-        response = '<file path="x.py">line1\r\nline2\r\nline3</file>'
+        response = '<file path="x.py">line1\r\nline2\r\nline3\r\n</file:end>'
         files = parse_files(response)
         assert files["x.py"] == "line1\nline2\nline3"
         assert "\r" not in files["x.py"]
 
     def test_handles_mixed_line_endings(self):
-        response = '<file path="x.py">line1\r\nline2\nline3\r\n</file>'
+        response = '<file path="x.py">line1\r\nline2\nline3\r\n</file:end>'
         files = parse_files(response)
         assert files["x.py"] == "line1\nline2\nline3"
+
+    def test_raises_parse_error_on_unclosed_block(self):
+        response = '<file path="x.py">missing close tag\n'
+        with pytest.raises(ParseError, match="Unclosed"):
+            parse_files(response)
+
+    def test_nested_file_tag_in_content_does_not_truncate(self):
+        """Content containing <file> or </file> literals must not truncate the block."""
+        inner = r'response = "<file path=\"x.py\">content</file:end>"'
+        response = f'<file path="tests/test_gen.py">\n{inner}\n</file:end>'
+        files = parse_files(response)
+        assert "tests/test_gen.py" in files
+        assert inner in files["tests/test_gen.py"]
+
+    def test_commentary_between_blocks_is_ignored(self):
+        response = (
+            "Here's file 1:\n"
+            '<file path="a.py">x = 1\n</file:end>\n'
+            "And here's file 2:\n"
+            '<file path="b.py">y = 2\n</file:end>'
+        )
+        files = parse_files(response)
+        assert set(files.keys()) == {"a.py", "b.py"}
+
+    def test_inline_content_on_opening_tag_line(self):
+        """Content on the same line as the opening tag is captured."""
+        response = '<file path="x.py">x = 1\n</file:end>'
+        files = parse_files(response)
+        assert files["x.py"] == "x = 1"
 
 
 class TestBuildFreshPrompt:
@@ -87,3 +126,14 @@ class TestBuildRetryPrompt:
         assert "5 tests failed" in prompt
         assert "broken code" in prompt
         assert "Generation 2 failed" in prompt
+
+
+class TestBuildParseRepairPrompt:
+    def test_includes_error_and_response(self):
+        prompt = build_parse_repair_prompt(
+            parse_error="Unclosed <file path='x.py'> block",
+            raw_response="<file path=\"x.py\">content without close",
+        )
+        assert "Unclosed" in prompt
+        assert "content without close" in prompt
+        assert "</file:end>" in prompt

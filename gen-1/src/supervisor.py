@@ -10,7 +10,7 @@ import structlog
 
 log = structlog.get_logger(component="prime")
 
-SUPERVISOR_URL = os.environ.get("CAMBRIAN_SUPERVISOR_URL", "http://localhost:8400")
+SUPERVISOR_URL = os.environ.get("CAMBRIAN_SUPERVISOR_URL", "http://host.docker.internal:8400")
 
 _session: aiohttp.ClientSession | None = None
 

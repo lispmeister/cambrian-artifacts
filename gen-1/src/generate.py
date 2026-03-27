@@ -18,13 +18,18 @@ SYSTEM_PROMPT = """\
 You are a code generator. You produce complete, working Python codebases from specifications.
 
 Rules:
-- Output ONLY <file path="...">content</file> blocks. One block per file.
+- Output ONLY <file path="...">content</file:end> blocks. One block per file.
 - Every file needed to build, test, and run the project must be in a <file> block.
 - Include a requirements.txt with all dependencies.
 - Include a test suite that exercises all functionality.
 - The code must work in Python 3.14 inside a Docker container with a venv at /venv.
 - Do NOT include manifest.json — it is generated separately.
 - Do NOT include the spec file — it is copied separately.
+- Python 3.14 STRICT: string literals MUST NOT contain unescaped newlines. Use
+  triple-quoted strings for multi-line content. Use \\n for embedded newlines in
+  single-line strings. A bare newline inside "..." or '...' is a SyntaxError.
+- Test strings that embed XML-like content (e.g. <file> blocks) MUST use raw strings
+  (r"...") or triple-quoted strings to avoid escaping issues.
 """
 
 
@@ -107,6 +112,24 @@ Parent generation: {parent}
 """
 
 
+def build_parse_repair_prompt(parse_error: str, raw_response: str) -> str:
+    """Build the user message for a parse repair attempt after ParseError."""
+    return f"""\
+# Parse Error
+
+The previous response could not be parsed. Error: {parse_error}
+
+# Malformed Response
+
+{raw_response}
+
+# Task
+
+Re-emit the EXACT SAME files using the correct format. Every <file> block MUST have a
+matching </file:end> on its own line. No nesting. No extra content between blocks.
+"""
+
+
 # ---------------------------------------------------------------------------
 # LLM call
 # ---------------------------------------------------------------------------
@@ -141,16 +164,41 @@ async def call_llm(system: str, user: str, model: str) -> tuple[str, int, int]:
 # Response parsing
 # ---------------------------------------------------------------------------
 
-FILE_PATTERN = re.compile(r'<file path="([^"]+)">(.*?)</file>', re.DOTALL)
+class ParseError(Exception):
+    """Raised when the LLM response cannot be parsed into file blocks."""
 
 
 def parse_files(response: str) -> dict[str, str]:
-    """Extract files from <file path="...">content</file> blocks.
+    """Extract files from <file path="...">content</file:end> blocks.
 
-    Returns a dict mapping file paths to their contents.
-    Strips leading/trailing newlines and normalizes line endings to LF.
+    Uses a line-by-line state machine instead of a dotall regex. Immune to the
+    nested-tag truncation that a dotall regex produces when file content contains
+    <file> or </file> literals (e.g. in test fixtures).
+
+    Raises ParseError if any <file> block is opened without a closing </file:end>.
+    Anything outside <file> blocks is silently discarded.
     """
-    matches = FILE_PATTERN.findall(response)
-    if not matches:
-        return {}
-    return {path: content.replace("\r\n", "\n").strip("\n") for path, content in matches}
+    current_path: str | None = None
+    current_lines: list[str] = []
+    files: dict[str, str] = {}
+
+    for line in response.splitlines(keepends=True):
+        if current_path is None:
+            m = re.match(r'<file path="([^"]+)">(.*)', line)
+            if m:
+                current_path = m.group(1)
+                # Strip trailing CRLF/LF from the opening-tag line's remainder.
+                # re.(.*)  stops before \n but may include a lone \r from CRLF input.
+                rest = m.group(2).rstrip("\r\n")
+                current_lines = [rest + "\n"] if rest else []
+        elif line.rstrip("\n\r") == "</file:end>":
+            content = "".join(current_lines).replace("\r\n", "\n").strip("\n")
+            files[current_path] = content
+            current_path = None
+        else:
+            current_lines.append(line)
+
+    if current_path is not None:
+        raise ParseError(f"Unclosed <file path={current_path!r}> block")
+
+    return files

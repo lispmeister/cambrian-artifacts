@@ -4,7 +4,12 @@ import json
 from pathlib import Path
 
 import pytest
-from src.manifest import compute_spec_hash, compute_artifact_hash, build_manifest
+from src.manifest import (
+    compute_spec_hash,
+    compute_artifact_hash,
+    extract_contracts,
+    build_manifest,
+)
 
 
 @pytest.fixture
@@ -52,6 +57,49 @@ class TestComputeArtifactHash:
         h2 = compute_artifact_hash(tmp_artifact, ["src/other.py"])
         assert h1 != h2, "Hash should differ when file path differs, even with same content"
 
+    def test_null_separator_prevents_collision(self, tmp_artifact):
+        """Null-byte separator prevents path/content boundary collisions."""
+        # Without separator: hash("a_file" + "hello") == hash("a_fil" + "ehello")
+        # With separator:    hash("a_file\0hello")    != hash("a_fil\0ehello")
+        (tmp_artifact / "src" / "a_file.py").write_text("hello")
+        (tmp_artifact / "src" / "a_fil.py").write_text("ehello")
+        h1 = compute_artifact_hash(tmp_artifact, ["src/a_file.py"])
+        h2 = compute_artifact_hash(tmp_artifact, ["src/a_fil.py"])
+        assert h1 != h2, "Null-byte separator must prevent path/content boundary collisions"
+
+    def test_matches_spec_algorithm(self, tmp_artifact):
+        """Hash output matches the spec's reference algorithm exactly."""
+        files = ["src/main.py", "requirements.txt"]
+        result = compute_artifact_hash(tmp_artifact, files)
+
+        # Recompute manually per spec
+        hasher = hashlib.sha256()
+        for f in sorted(files):
+            hasher.update(f.encode())
+            hasher.update(b"\0")
+            hasher.update((tmp_artifact / f).read_bytes())
+        expected = "sha256:" + hasher.hexdigest()
+
+        assert result == expected
+
+
+class TestExtractContracts:
+    def test_returns_none_when_no_block(self):
+        assert extract_contracts("# No contracts here") is None
+
+    def test_extracts_valid_contracts(self):
+        spec = '```contracts\n[{"name": "test", "type": "http"}]\n```'
+        result = extract_contracts(spec)
+        assert result == [{"name": "test", "type": "http"}]
+
+    def test_returns_none_on_invalid_json(self):
+        spec = "```contracts\nnot valid json\n```"
+        assert extract_contracts(spec) is None
+
+    def test_returns_none_if_not_a_list(self):
+        spec = '```contracts\n{"not": "a list"}\n```'
+        assert extract_contracts(spec) is None
+
 
 class TestBuildManifest:
     def test_has_all_required_fields(self, tmp_artifact):
@@ -90,10 +138,9 @@ class TestBuildManifest:
             input_tokens=0,
             output_tokens=0,
         )
-        # ISO-8601: contains 'T' separator
         assert "T" in m["created_at"]
 
-    def test_has_three_contracts(self, tmp_artifact):
+    def test_has_three_contracts_by_default(self, tmp_artifact):
         m = build_manifest(
             generation=1,
             parent_generation=0,
@@ -122,3 +169,38 @@ class TestBuildManifest:
         )
         gen_contract = [c for c in m["contracts"] if c["name"] == "stats-generation"][0]
         assert gen_contract["expect"]["body_contains"]["generation"] == 5
+
+    def test_uses_contracts_from_spec_when_provided(self, tmp_artifact):
+        spec_with_contracts = (
+            '```contracts\n'
+            '[{"name": "custom", "type": "http", "method": "GET", "path": "/custom",'
+            ' "expect": {"status": 200}}]\n'
+            '```'
+        )
+        m = build_manifest(
+            generation=1,
+            parent_generation=0,
+            spec_hash="sha256:abc",
+            artifact_dir=tmp_artifact,
+            files=["src/main.py"],
+            producer_model="test",
+            input_tokens=0,
+            output_tokens=0,
+            spec_content=spec_with_contracts,
+        )
+        assert len(m["contracts"]) == 1
+        assert m["contracts"][0]["name"] == "custom"
+
+    def test_falls_back_to_defaults_when_spec_has_no_contracts_block(self, tmp_artifact):
+        m = build_manifest(
+            generation=1,
+            parent_generation=0,
+            spec_hash="sha256:abc",
+            artifact_dir=tmp_artifact,
+            files=["src/main.py"],
+            producer_model="test",
+            input_tokens=0,
+            output_tokens=0,
+            spec_content="# No contracts block here",
+        )
+        assert len(m["contracts"]) == 3

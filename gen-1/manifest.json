@@ -2,8 +2,8 @@
   "cambrian-version": 1,
   "generation": 1,
   "parent-generation": 0,
-  "spec-hash": "sha256:b468da4e3d9c522beb2ac431ee9b3d0447c76bd43e24eb3105a86579a8c2f1d2",
-  "artifact-hash": "sha256:64bbe86ce7036b4283f2d959da573f13e3e2863b2c412c77dbbdcf4d8295144e",
+  "spec-hash": "sha256:1fc8d9334f30d7faeb6af884fc910d564702fbaedb7e1497df74e9ebdc125552",
+  "artifact-hash": "sha256:6b0c554acc14be6b47ade1130b74281bf0fa84da9354a495d840b77b5b2f5817",
   "producer-model": "human+claude-code",
   "token-usage": {
     "input": 0,
