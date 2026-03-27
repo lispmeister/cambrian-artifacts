@@ -25,6 +25,11 @@ Rules:
 - The code must work in Python 3.14 inside a Docker container with a venv at /venv.
 - Do NOT include manifest.json — it is generated separately.
 - Do NOT include the spec file — it is copied separately.
+- Python 3.14 STRICT: string literals MUST NOT contain unescaped newlines. Use triple
+  quotes (\"\"\" or ''') for multi-line strings. Use \\n for embedded newlines in
+  single-line strings. A bare newline inside "..." or '...' is a SyntaxError.
+- Test strings that embed XML-like content (e.g. <file> blocks) MUST use raw strings
+  (r"...") or triple-quoted strings to avoid escaping issues.
 """
 
 

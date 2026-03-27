@@ -2,8 +2,8 @@
   "cambrian-version": 1,
   "generation": 1,
   "parent-generation": 0,
-  "spec-hash": "sha256:54b470f7e5d3e5396501b2faa7a1619004daeea4440208c12850736af0f8e978",
-  "artifact-hash": "sha256:31a353ad489e6bcfeff9a986e0e9e065bfce9f2f5e1e64b163f1029648553a49",
+  "spec-hash": "sha256:409a04069f955910aa959501d5a18d60fd57512969b6b15fc556e0538800417a",
+  "artifact-hash": "sha256:dc099f85c3fcf6ad061e135cce0492b191da7c29211f0602d49177f00397bb75",
   "producer-model": "human+claude-sonnet-4-6",
   "token-usage": {"input": 0, "output": 0},
   "files": [
