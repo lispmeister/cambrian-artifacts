@@ -18,7 +18,7 @@ SYSTEM_PROMPT = """\
 You are a code generator. You produce complete, working Python codebases from specifications.
 
 Rules:
-- Output ONLY <file path="...">content</file> blocks. One block per file.
+- Output ONLY <file path="...">content</file:end> blocks. One block per file.
 - Every file needed to build, test, and run the project must be in a <file> block.
 - Include a requirements.txt with all dependencies.
 - Include a test suite that exercises all functionality.
@@ -152,7 +152,7 @@ async def call_llm(system: str, user: str, model: str) -> tuple[str, int, int]:
 # Response parsing
 # ---------------------------------------------------------------------------
 
-FILE_PATTERN = re.compile(r'<file path="([^"]+)">(.*?)</file>', re.DOTALL)
+FILE_PATTERN = re.compile(r'<file path="([^"]+)">(.*?)</file:end>', re.DOTALL)
 
 
 def parse_files(response: str) -> dict[str, str]:

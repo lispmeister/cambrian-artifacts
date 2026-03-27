@@ -7,14 +7,14 @@ from src.generate import parse_files, build_fresh_prompt, build_retry_prompt
 
 class TestParseFiles:
     def test_single_file(self):
-        response = '<file path="src/main.py">print("hello")</file>'
+        response = '<file path="src/main.py">print("hello")</file:end>'
         files = parse_files(response)
         assert files == {"src/main.py": 'print("hello")'}
 
     def test_multiple_files(self):
         response = (
-            '<file path="src/a.py">a = 1</file>\n'
-            '<file path="src/b.py">b = 2</file>'
+            '<file path="src/a.py">a = 1</file:end>\n'
+            '<file path="src/b.py">b = 2</file:end>'
         )
         files = parse_files(response)
         assert len(files) == 2
@@ -22,14 +22,14 @@ class TestParseFiles:
         assert files["src/b.py"] == "b = 2"
 
     def test_strips_surrounding_newlines(self):
-        response = '<file path="x.py">\nline1\nline2\n</file>'
+        response = '<file path="x.py">\nline1\nline2\n</file:end>'
         files = parse_files(response)
         assert files["x.py"] == "line1\nline2"
 
     def test_ignores_text_outside_blocks(self):
         response = (
             "Here is the code:\n\n"
-            '<file path="x.py">code</file>\n\n'
+            '<file path="x.py">code</file:end>\n\n'
             "That's all."
         )
         files = parse_files(response)
@@ -44,32 +44,45 @@ class TestParseFiles:
     def test_multiline_content(self):
         response = (
             '<file path="main.py">def main():\n    pass\n\n'
-            'if __name__ == "__main__":\n    main()</file>'
+            'if __name__ == "__main__":\n    main()</file:end>'
         )
         files = parse_files(response)
         assert "def main():" in files["main.py"]
         assert "if __name__" in files["main.py"]
 
     def test_normalizes_crlf_to_lf(self):
-        response = '<file path="x.py">line1\r\nline2\r\nline3</file>'
+        response = '<file path="x.py">line1\r\nline2\r\nline3</file:end>'
         files = parse_files(response)
         assert files["x.py"] == "line1\nline2\nline3"
         assert "\r" not in files["x.py"]
 
     def test_handles_mixed_line_endings(self):
-        response = '<file path="x.py">line1\r\nline2\nline3\r\n</file>'
+        response = '<file path="x.py">line1\r\nline2\nline3\r\n</file:end>'
         files = parse_files(response)
         assert files["x.py"] == "line1\nline2\nline3"
 
     def test_nested_path_separators(self):
-        response = '<file path="src/sub/module.py">x = 1</file>'
+        response = '<file path="src/sub/module.py">x = 1</file:end>'
         files = parse_files(response)
         assert "src/sub/module.py" in files
 
     def test_file_with_xml_like_content(self):
-        response = '<file path="x.py">result = "<div>"</file>'
+        response = '<file path="x.py">result = "<div>"</file:end>'
         files = parse_files(response)
         assert files["x.py"] == 'result = "<div>"'
+
+    def test_nested_file_tags_in_content(self):
+        """Content containing inner <file>...</file> tags must not confuse the parser."""
+        response = (
+            '<file path="tests/test_gen.py">\n'
+            'def test_single():\n'
+            '    response = \'<file path="x.py">code</file>\'\n'
+            '    assert parse_files(response) == {"x.py": "code"}\n'
+            '</file:end>'
+        )
+        files = parse_files(response)
+        assert "tests/test_gen.py" in files
+        assert '</file>' in files["tests/test_gen.py"]
 
 
 class TestBuildFreshPrompt:
