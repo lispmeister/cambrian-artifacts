@@ -30,6 +30,12 @@ Rules:
   single-line strings. A bare newline inside "..." or '...' is a SyntaxError.
 - Test strings that embed XML-like content (e.g. <file> blocks) MUST use raw strings
   (r"...") or triple-quoted strings to avoid escaping issues.
+- LLM API: MUST use `async with client.messages.stream(...) as stream:` with
+  `await stream.get_final_message()`. Do NOT use `client.messages.create()` — the SDK
+  raises an error for large max_tokens with non-streaming calls.
+- aiohttp tests: use `aiohttp_client` pytest fixture. Do NOT use `AioHTTPTestCase` or
+  `@unittest_run_loop` — both are deprecated and break in aiohttp 3.8+.
+  Use `aiohttp_server` for mock servers. Set asyncio_mode = "auto" in pytest.ini.
 """
 
 
