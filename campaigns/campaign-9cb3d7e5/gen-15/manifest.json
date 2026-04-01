@@ -1,0 +1,37 @@
+{
+  "cambrian-version": 1,
+  "generation": 15,
+  "parent-generation": 14,
+  "spec-hash": "sha256:a1501b2da22d072ad5b83986463084db3a2ab214dbccbe8fee15ad4292194762",
+  "artifact-hash": "sha256:a8fed369cedf7dd14c3f82aa366bc12f47bb385e12c6972cd551dac2a177282b",
+  "producer-model": "claude-sonnet-4-6",
+  "token-usage": {
+    "input": 32293,
+    "output": 17412
+  },
+  "files": [
+    "manifest.json",
+    "pytest.ini",
+    "requirements.txt",
+    "spec/CAMBRIAN-SPEC-005.md",
+    "src/__init__.py",
+    "src/generate.py",
+    "src/manifest.py",
+    "src/models.py",
+    "src/prime.py",
+    "src/supervisor.py",
+    "tests/__init__.py",
+    "tests/test_generate.py",
+    "tests/test_generation_logic.py",
+    "tests/test_manifest.py",
+    "tests/test_prime.py",
+    "tests/test_supervisor.py"
+  ],
+  "created-at": "2026-04-01T14:25:52.726612+00:00",
+  "entry": {
+    "build": "uv pip install -r requirements.txt",
+    "test": "python -m pytest tests/ -v",
+    "start": "python src/prime.py",
+    "health": "http://localhost:8401/health"
+  }
+}
