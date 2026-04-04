@@ -1,0 +1,93 @@
+{
+  "campaign_id": "gen0-1775225335",
+  "spec_path": "spec/CAMBRIAN-SPEC-005.md",
+  "spec_hash": "sha256:d4d7c776f277a2b45f3ac2e3525380e53e6131764b1aa18158c6599e24792c6d",
+  "model": "claude-sonnet-4-6",
+  "supervisor_url": "http://localhost:8400",
+  "start_generation": 33,
+  "generations": 1,
+  "viable": 0,
+  "records": [
+    {
+      "generation": 33,
+      "parent": 32,
+      "spec-hash": "sha256:d4d7c776f277a2b45f3ac2e3525380e53e6131764b1aa18158c6599e24792c6d",
+      "artifact-hash": "sha256:e86a31356dcbca2f2feaa7d9573326c80d89d0e94d6c8cd462e7e35bb2fbd34e",
+      "outcome": "failed",
+      "created": "2026-04-03T14:12:06.976554+00:00",
+      "container-id": "lab-gen-33",
+      "campaign-id": "gen0-1775225335",
+      "viability": {
+        "generation": 33,
+        "status": "non-viable",
+        "failure_stage": "test",
+        "checks": {
+          "manifest": {
+            "passed": true,
+            "duration_ms": 0
+          },
+          "build": {
+            "passed": true,
+            "duration_ms": 3586
+          },
+          "test": {
+            "passed": false,
+            "duration_ms": 1507,
+            "tests_passed": 70,
+            "tests_run": 71
+          },
+          "start": {
+            "passed": false,
+            "duration_ms": 0
+          },
+          "health": {
+            "passed": false,
+            "duration_ms": 0
+          }
+        },
+        "fitness": {
+          "build_duration_ms": 3586,
+          "test_duration_ms": 1507,
+          "total_duration_ms": 5093,
+          "test_count": 71,
+          "test_pass_rate": 0.9859,
+          "source_files": 11,
+          "test_files": 5,
+          "source_lines": 1855,
+          "test_lines": 866,
+          "dependency_count": 7,
+          "token_input": 52784,
+          "token_output": 17670,
+          "assertion_density": 1.493,
+          "trivial_assert_rate": 0.0,
+          "fitness_weights": {
+            "test_count": 0.5,
+            "test_pass_rate": 0.5,
+            "trivial_assert_rate": 0.5
+          },
+          "stages_completed": [
+            "manifest",
+            "build",
+            "test"
+          ]
+        },
+        "completed_at": "2026-04-03T14:12:12.365435+00:00",
+        "diagnostics": {
+          "stage": "test",
+          "summary": "1 of 71 tests failed",
+          "exit_code": 1,
+          "failures": [
+            {
+              "test": "tests/test_generation_logic.py::test_parse_repair_counter",
+              "error": "assert 0 == 1",
+              "file": "tests/test_generation_logic.py",
+              "line": 130
+            }
+          ],
+          "stdout_tail": "tests/test_generate.py::test_parse_ignores_commentary_outside_blocks PASSED [ 12%]\ntests/test_generate.py::test_parse_empty_response PASSED                 [ 14%]\ntests/test_generate.py::test_parse_response_with_only_commentary PASSED  [ 15%]\ntests/test_generate.py::test_parse_file_tag_in_content_does_not_confuse_parser PASSED [ 16%]\ntests/test_generate.py::test_parse_spec_vector_1 PASSED                  [ 18%]\ntests/test_generate.py::test_parse_spec_vector_2 PASSED                  [ 19%]\ntests/test_generate.py::test_parse_spec_vector_3 PASSED                  [ 21%]\ntests/test_generate.py::test_fresh_prompt_includes_spec PASSED           [ 22%]\ntests/test_generate.py::test_fresh_prompt_includes_history PASSED        [ 23%]\ntests/test_generate.py::test_fresh_prompt_includes_generation_number PASSED [ 25%]\ntests/test_generate.py::test_retry_prompt_includes_diagnostics PASSED    [ 26%]\ntests/test_generate.py::test_retry_prompt_includes_failed_code PASSED    [ 28%]\ntests/test_generate.py::test_parse_repair_prompt_includes_error PASSED   [ 29%]\ntests/test_generate.py::test_parse_repair_prompt_includes_raw_response PASSED [ 30%]\ntests/test_generate.py::test_model_selection_first_attempt PASSED        [ 32%]\ntests/test_generate.py::test_model_escalation_on_retry PASSED            [ 33%]\ntests/test_generate.py::test_system_prompt_contains_rules PASSED         [ 35%]\ntests/test_generation_logic.py::test_generation_number_from_empty_history PASSED [ 36%]\ntests/test_generation_logic.py::test_generation_number_from_existing_history PASSED [ 38%]\ntests/test_generation_logic.py::test_generation_number_non_sequential PASSED [ 39%]\ntests/test_generation_logic.py::test_model_escalation_on_retry PASSED    [ 40%]\ntests/test_generation_logic.py::test_max_retries_default PASSED          [ 42%]\ntests/test_generation_logic.py::test_max_gens_default PASSED             [ 43%]\ntests/test_generation_logic.py::test_max_parse_retries_default PASSED    [ 45%]\ntests/test_generation_logic.py::test_max_retries_from_env PASSED         [ 46%]\ntests/test_generation_logic.py::test_retry_stops_at_max PASSED           [ 47%]\ntests/test_generation_logic.py::test_parse_repair_counter FAILED         [ 49%]\ntests/test_manifest.py::test_spec_hash_format PASSED                     [ 50%]\ntests/test_manifest.py::test_spec_hash_matches_sha256 PASSED             [ 52%]\ntests/test_manifest.py::test_artifact_hash_excludes_manifest PASSED      [ 53%]\ntests/test_manifest.py::test_artifact_hash_includes_file_content PASSED  [ 54%]\ntests/test_manifest.py::test_artifact_hash_uses_sorted_order PASSED      [ 56%]\ntests/test_manifest.py::test_artifact_hash_has_null_separator PASSED     [ 57%]\ntests/test_manifest.py::test_artifact_hash_format PASSED                 [ 59%]\ntests/test_manifest.py::test_build_manifest_has_required_fields PASSED   [ 60%]\ntests/test_manifest.py::test_build_manifest_generation_numbers PASSED    [ 61%]\ntests/test_manifest.py::test_build_manifest_token_usage PASSED           [ 63%]\ntests/test_manifest.py::test_build_manifest_cambrian_version PASSED      [ 64%]\ntests/test_manifest.py::test_build_manifest_entry_points PASSED          [ 66%]\ntests/test_manifest.py::test_write_manifest_creates_file PASSED          [ 67%]\ntests/test_manifest.py::test_build_manifest_with_contracts PASSED        [ 69%]\ntests/test_manifest.py::test_artifact_hash_in_manifest_excludes_manifest PASSED [ 70%]\ntests/test_manifest.py::test_extract_contracts_from_spec_found PASSED    [ 71%]\ntests/test_manifest.py::test_extract_contracts_from_spec_not_found PASSED [ 73%]\ntests/test_manifest.py::test_extract_contracts_invalid_json PASSED       [ 74%]\ntests/test_prime.py::test_health_status PASSED                           [ 76%]\ntests/test_prime.py::test_health_body PASSED                             [ 77%]\ntests/test_prime.py::test_health_content_type PASSED                     [ 78%]\ntests/test_prime.py::test_stats_status PASSED                            [ 80%]\ntests/test_prime.py::test_stats_has_required_keys PASSED                 [ 81%]\ntests/test_prime.py::test_stats_generation_type PASSED                   [ 83%]\ntests/test_prime.py::test_stats_uptime_type PASSED                       [ 84%]\ntests/test_prime.py::test_stats_status_value PASSED                      [ 85%]\ntests/test_prime.py::test_stats_generation_default PASSED                [ 87%]\ntests/test_prime.py::test_unknown_route PASSED                           [ 88%]\ntests/test_supervisor.py::test_get_versions PASSED                       [ 90%]\ntests/test_supervisor.py::test_get_stats PASSED                          [ 91%]\ntests/test_supervisor.py::test_spawn PASSED                              [ 92%]\ntests/test_supervisor.py::test_promote PASSED                            [ 94%]\ntests/test_supervisor.py::test_rollback PASSED                           [ 95%]\ntests/test_supervisor.py::test_supervisor_returns_empty_list_on_invalid PASSED [ 97%]\ntests/test_supervisor.py::test_spawn_sends_correct_fields PASSED         [ 98%]\ntests/test_supervisor.py::test_get_versions_empty_history PASSED         [100%]\n\n=================================== FAILURES ===================================\n__________________________ test_parse_repair_counter ___________________________\n\n    def test_parse_repair_counter() -> None:\n        \"\"\"Parse repair counter doesn't count against generation retries.\"\"\"\n        from src.generate import ParseError, parse_files\n    \n        max_parse_retries = 2\n        parse_attempts = 0\n        parse_success = False\n    \n        # Simulate parse failure then success\n        responses = [\n            \"<file unclosed\",  # bad \u2014 no closing tag\n            '<file path=\"a.py\">\\ncontent\\n</file:end>\\n',  # good\n        ]\n    \n        for response in responses:\n            try:\n                result = parse_files(response)\n                parse_success = True\n                break\n            except ParseError:\n                parse_attempts += 1\n                if parse_attempts >= max_parse_retries:\n                    break\n    \n        assert parse_success is True\n>       assert parse_attempts == 1  # Only one failure before success\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       assert 0 == 1\n\ntests/test_generation_logic.py:130: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_generation_logic.py::test_parse_repair_counter - assert 0 == 1\n========================= 1 failed, 70 passed in 0.15s =========================\n",
+          "stderr_tail": ""
+        }
+      }
+    }
+  ]
+}

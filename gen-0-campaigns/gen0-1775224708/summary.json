@@ -1,0 +1,105 @@
+{
+  "campaign_id": "gen0-1775224708",
+  "spec_path": "spec/CAMBRIAN-SPEC-005.md",
+  "spec_hash": "sha256:d4d7c776f277a2b45f3ac2e3525380e53e6131764b1aa18158c6599e24792c6d",
+  "model": "claude-sonnet-4-6",
+  "supervisor_url": "http://localhost:8400",
+  "start_generation": 31,
+  "generations": 1,
+  "viable": 1,
+  "records": [
+    {
+      "generation": 31,
+      "parent": 30,
+      "spec-hash": "sha256:d4d7c776f277a2b45f3ac2e3525380e53e6131764b1aa18158c6599e24792c6d",
+      "artifact-hash": "sha256:3ad21f8aa87cf3397d48bce5a7e9108548b532ce1049942c0b25a97526fbb0e8",
+      "outcome": "promoted",
+      "created": "2026-04-03T14:02:34.101942+00:00",
+      "container-id": "lab-gen-31",
+      "campaign-id": "gen0-1775224708",
+      "viability": {
+        "generation": 31,
+        "status": "viable",
+        "failure_stage": "none",
+        "checks": {
+          "manifest": {
+            "passed": true,
+            "duration_ms": 0
+          },
+          "build": {
+            "passed": true,
+            "duration_ms": 3470
+          },
+          "test": {
+            "passed": true,
+            "duration_ms": 1653,
+            "tests_passed": 71,
+            "tests_run": 71
+          },
+          "start": {
+            "passed": true,
+            "duration_ms": 1010
+          },
+          "health": {
+            "spec-vectors": {
+              "sv-health-liveness": {
+                "passed": true,
+                "duration_ms": 188
+              },
+              "sv-health-body": {
+                "passed": true,
+                "duration_ms": 0
+              },
+              "sv-stats-schema": {
+                "passed": true,
+                "duration_ms": 18
+              },
+              "sv-stats-generation": {
+                "passed": true,
+                "duration_ms": 0
+              },
+              "sv-stats-status-is-string": {
+                "passed": true,
+                "duration_ms": 0
+              }
+            },
+            "passed": true,
+            "duration_ms": 278
+          }
+        },
+        "fitness": {
+          "build_duration_ms": 3470,
+          "test_duration_ms": 1653,
+          "start_duration_ms": 1010,
+          "health_duration_ms": 278,
+          "total_duration_ms": 6411,
+          "test_count": 71,
+          "test_pass_rate": 1.0,
+          "source_files": 11,
+          "test_files": 5,
+          "source_lines": 1811,
+          "test_lines": 991,
+          "dependency_count": 7,
+          "token_input": 50969,
+          "token_output": 20371,
+          "assertion_density": 1.4648,
+          "trivial_assert_rate": 0.0,
+          "spec_vector_pass_rate": 1.0,
+          "fitness_weights": {
+            "test_count": 0.5,
+            "test_pass_rate": 0.5,
+            "trivial_assert_rate": 0.5
+          },
+          "stages_completed": [
+            "manifest",
+            "build",
+            "test",
+            "start",
+            "health"
+          ]
+        },
+        "completed_at": "2026-04-03T14:02:47.857671+00:00"
+      }
+    }
+  ]
+}
